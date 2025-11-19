@@ -1,0 +1,111 @@
+
+# -------------------------
+# Generated Go .gitignore
+# -------------------------
+
+# Binaries for programs and plugins
+bin/
+bin/*
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# If you build binaries into the project root
+/api
+/main
+
+# Build and test artifacts
+*.test
+*.out
+coverage.out
+coverage.html
+*.coverprofile
+
+# Object files, archives
+*.o
+*.a
+
+# Package objects
+pkg/
+pkg/**
+
+# Go workspace
+go.work
+go.work.sum
+
+# Dependency directories
+vendor/
+
+# Environment variables / secrets
+.env
+.env.*
+.secrets
+secrets.env
+
+# Logs and runtime files
+logs/
+*.log
+*.pid
+*.seed
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# IDEs and editors
+.vscode/
+*.code-workspace
+.idea/
+*.iml
+*.ipr
+*.iws
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+docker-compose.*.yml
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+.terragrunt-cache/
+
+# golangci-lint cache
+.golangci.yml
+.golangci-cache/
+
+# Go test cache
+testdata/
+
+# Editor swap files
+*.swp
+
+# Misc
+.cache/
+.idea_modules/
