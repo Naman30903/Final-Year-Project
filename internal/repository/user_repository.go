@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/yourusername/projectname/internal/domain"
+	"github.com/Naman30903/Final-Year-Project/internal/domain"
 )
 
 // UserRepository defines the interface for user data operations

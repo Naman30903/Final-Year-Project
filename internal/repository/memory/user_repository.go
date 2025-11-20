@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yourusername/projectname/internal/domain"
+	"github.com/Naman30903/Final-Year-Project/internal/domain"
 )
 
 // UserRepository is an in-memory implementation

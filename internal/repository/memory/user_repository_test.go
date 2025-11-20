@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/yourusername/projectname/internal/domain"
+	"github.com/Naman30903/Final-Year-Project/internal/domain"
 )
 
 func TestUserRepository_Create(t *testing.T) {

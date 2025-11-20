@@ -1,7 +1,4 @@
-<<<<<<< HEAD
 # Final-Year-Project
-=======
-# Go Backend Project
 
 A production-ready Go backend following clean architecture principles and best practices.
 

@@ -27,9 +27,8 @@ coverage.html
 *.o
 *.a
 
-# Package objects
-pkg/
-pkg/**
+# Don't ignore pkg/ - it contains our public packages like pkg/logger
+# Only ignore build artifacts, not source code in pkg/
 
 # Go workspace
 go.work
