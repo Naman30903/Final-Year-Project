@@ -108,3 +108,17 @@ testdata/
 # Misc
 .cache/
 .idea_modules/
+
+# -------------------------
+# Generated docs & example files to ignore
+# -------------------------
+# Documentation created during development (personal/project notes)
+INTEGRATION_GUIDE.md
+SETUP_COMPLETE.md
+API_TESTING.md
+QUICK_REFERENCE.md
+ARCHITECTURE_OVERVIEW.md
+
+# Example ML service files
+example_ml_service.py
+example_requirements.txt
