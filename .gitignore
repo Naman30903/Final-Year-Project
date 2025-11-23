@@ -122,3 +122,47 @@ ARCHITECTURE_OVERVIEW.md
 # Example ML service files
 example_ml_service.py
 example_requirements.txt
+
+# -------------------------
+# ML Model artifacts (generated during training)
+# -------------------------
+# Trained models
+*.h5
+*.hdf5
+fake_news_detector_*.h5
+best_model_*.h5
+
+# Tokenizers and configs
+tokenizer.pkl
+model_config.pkl
+
+# Training visualizations
+training_metrics.png
+kfold_results.png
+
+# Datasets (too large for git)
+*.csv
+Fake.csv
+True.csv
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# TensorFlow
+*.pb
+checkpoint
+model.ckpt.*
