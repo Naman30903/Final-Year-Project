@@ -1,124 +1,101 @@
-# Final-Year-Project: Fake News Detection Backend
+# Fake News Detection - Final Year Project
 
-A production-ready Go backend for fake news detection, integrating ML models with clean architecture principles.
-
-## 🎯 Overview
-
-This backend service provides a RESTful API for analyzing news articles to detect fake news using machine learning. It supports both direct text analysis and URL scraping, with real-time predictions and analysis history.
-
-## ✨ Features
-
-- 📰 **Text Analysis**: Analyze news article text directly
-- 🔗 **URL Scraping**: Extract and analyze content from URLs
-- 🤖 **ML Integration**: Seamless integration with Python ML models
-- 📊 **History Tracking**: Store and retrieve analysis history
-- 🏥 **Health Monitoring**: ML service health checks
-- ⚡ **Real-time Processing**: Immediate prediction results
-- 🏗️ **Clean Architecture**: Maintainable and testable codebase
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Go 1.21+
-- ML service running (see ML Model Setup)
-
-### Build & Run
-
-```bash
-# Clone and navigate
-cd backend
-
-# Build (already done!)
-./bin/api
-
-# Or rebuild
-go build -o bin/api ./cmd/api
-
-# Set ML service URL and run
-export ML_SERVICE_URL=http://localhost:8000
-./bin/api
-```
-
-Server runs on: `http://localhost:8080`
-
-### Quick Test
-
-```bash
-# Health check
-curl http://localhost:8080/health
-
-# Analyze text
-curl -X POST http://localhost:8080/api/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"type":"text","content":"Your news article here..."}'
-```
+> Full-stack application for detecting fake news using Deep Learning and Go backend
 
 ## 📁 Project Structure
 
 ```
-.
-├── cmd/                    # Main applications
-│   └── api/               # API server entry point
-│       └── main.go
-├── internal/              # Private application code
-│   ├── domain/           # Domain entities/models
-│   │   ├── news.go       # News article models
-│   │   ├── prediction.go # Prediction models
-│   │   ├── user.go       # User models
-│   │   └── errors.go     # Custom errors
-│   ├── repository/       # Data access layer
-│   │   └── memory/       # In-memory implementation
-│   │       ├── user_repository.go
-│   │       └── prediction_repository.go
-│   ├── service/          # Business logic layer
-│   │   ├── user_service.go
-│   │   ├── news_service.go      # News analysis logic
-│   │   ├── ml_client.go         # ML service client
-│   │   └── scraper_service.go   # URL scraping
-│   └── handler/          # HTTP handlers
-│       ├── user_handler.go
-│       └── news_handler.go      # News API handlers
-├── pkg/                   # Public libraries
-│   └── logger/           # Logging utilities
-├── scripts/              # Build and deployment scripts
-│   └── fix_and_build.sh
-├── example_ml_service.py # Example ML service
-├── example_requirements.txt
-├── SETUP_COMPLETE.md     # Complete setup guide
-├── INTEGRATION_GUIDE.md  # Detailed API documentation
-├── API_TESTING.md        # Testing examples
-├── ARCHITECTURE_OVERVIEW.md # System architecture
-├── QUICK_REFERENCE.md    # Quick reference card
-├── Makefile              # Build commands
-├── Dockerfile            # Docker configuration
-├── go.mod                # Go module file
-└── README.md
+Final_year_project/
+├── backend/                    # Go Backend API
+│   ├── cmd/                   # Application entry points
+│   ├── internal/              # Private application code
+│   │   ├── domain/           # Business logic & models
+│   │   ├── handler/          # HTTP handlers
+│   │   ├── repository/       # Data access layer
+│   │   └── service/          # Business services
+│   ├── pkg/                   # Public libraries
+│   ├── bin/                   # Compiled binaries
+│   └── kaggle_fake_news_detection.ipynb  # ML training notebook
+│
+└── frontend/                   # Frontend (To be implemented)
+    └── (Coming soon)
 ```
+
+## 🎯 Features
+
+### Backend (Go)
+- ✅ RESTful API for news analysis
+- ✅ ML model integration via HTTP client
+- ✅ URL scraping for article content extraction
+- ✅ Prediction history storage
+- ✅ Health check endpoints
+
+### ML Model (Python/Kaggle)
+- ✅ K-Fold Cross Validation (5 folds)
+- ✅ Deep Learning: Embedding → Conv1D → BiLSTM → Attention
+- ✅ L2 Regularization + Dropout
+- ✅ Early Stopping & Model Checkpointing
+- ✅ Counterfactual Generation
+- ✅ Real-world article testing
+
+## 🚀 Quick Start
+
+### Backend Setup
+
+```bash
+cd backend
+
+# Install dependencies
+go mod download
+
+# Build the application
+go build -o bin/api cmd/api/main.go
+
+# Set ML service URL (after deploying model)
+export ML_SERVICE_URL=https://your-ml-service-url.com
+
+# Run the server
+./bin/api
+```
+
+The API will be available at `http://localhost:8080`
+
+### ML Model Training (Kaggle)
+
+1. Upload `backend/kaggle_fake_news_detection.ipynb` to Kaggle
+2. Add ISOT Fake News Dataset
+3. Enable GPU in Settings
+4. Run all cells
+5. Download trained model and tokenizer from Output panel
+
+### ML Model Deployment
+
+See `backend/` for deployment guides:
+- Hugging Face Spaces (Recommended)
+- Render
+- Local deployment
 
 ## 📡 API Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/analyze` | Analyze news (text or URL) |
-| GET | `/api/predictions?id={id}` | Get specific prediction |
-| GET | `/api/history` | Get all analysis history |
-| GET | `/api/health` | Check ML service status |
-| GET | `/health` | Basic health check |
+| POST | `/api/analyze` | Analyze news article (text or URL) |
+| GET | `/api/predictions/:id` | Get prediction by ID |
+| GET | `/api/history` | Get all prediction history |
+| GET | `/api/health` | Health check |
 
-### Example Requests
+### Example Request
 
-**Analyze Text:**
 ```bash
+# Analyze text
 curl -X POST http://localhost:8080/api/analyze \
   -H "Content-Type: application/json" \
   -d '{
     "type": "text",
-    "content": "Breaking news article text..."
+    "content": "Your news article text here..."
   }'
-```
 
-**Analyze URL:**
-```bash
+# Analyze URL
 curl -X POST http://localhost:8080/api/analyze \
   -H "Content-Type: application/json" \
   -d '{
@@ -127,290 +104,150 @@ curl -X POST http://localhost:8080/api/analyze \
   }'
 ```
 
-**Get History:**
-```bash
-curl http://localhost:8080/api/history
+### Example Response
+
+```json
+{
+  "id": "uuid",
+  "result": "REAL",
+  "confidence": 0.9234,
+  "processing_time": "245ms",
+  "model_version": "v1.0",
+  "created_at": "2024-11-25T10:30:00Z"
+}
 ```
 
-## 🤖 ML Model Setup
+## 🛠️ Tech Stack
 
-### Recommended: Hugging Face Spaces (FREE)
+### Backend
+- **Language**: Go 1.21+
+- **Architecture**: Clean Architecture (Domain-Driven Design)
+- **HTTP Router**: Standard library (net/http)
+- **Dependencies**: 
+  - `github.com/google/uuid` - UUID generation
 
-1. **Create Space**: https://huggingface.co/spaces
-2. **Choose FastAPI** template
-3. **Upload files**:
-   - Copy `example_ml_service.py` as `app.py`
-   - Copy `example_requirements.txt` as `requirements.txt`
-4. **Deploy** → Get URL (e.g., `https://username-space.hf.space`)
-5. **Configure Backend**:
-   ```bash
-   export ML_SERVICE_URL=https://username-space.hf.space
-   ```
+### ML Model
+- **Framework**: TensorFlow 2.x / Keras
+- **Training**: Kaggle (GPU enabled)
+- **Dataset**: ISOT Fake News Dataset (~45K articles)
+- **Deployment**: Hugging Face Spaces / Render
+- **API Framework**: FastAPI + Uvicorn
 
-### Alternative Options:
-- **Render**: Free tier with cold starts
-- **Google Cloud Run**: Generous free tier
-- **Local**: Run Python service on port 8000
+### Frontend (Coming Soon)
+- TBD
 
-See `INTEGRATION_GUIDE.md` for detailed setup instructions.
+## 📊 Model Performance
+
+- **Accuracy**: ~99% (K-Fold CV average)
+- **Precision**: ~99%
+- **Recall**: ~99%
+- **F1-Score**: ~99%
+- **Training Time**: ~45-70 minutes (with GPU)
 
 ## 🏗️ Architecture
 
-This project follows **Clean Architecture** principles:
+### System Overview
 
 ```
-Client → Handler → Service → Repository
-                      ↓
-                 ML Service
+┌─────────────┐      ┌──────────────┐      ┌─────────────────┐
+│   Frontend  │ ───> │  Go Backend  │ ───> │   ML Service    │
+│  (React?)   │      │   REST API   │      │ (FastAPI/Python)│
+└─────────────┘      └──────────────┘      └─────────────────┘
+                            │
+                            ▼
+                     ┌──────────────┐
+                     │  Repository  │
+                     │  (In-Memory) │
+                     └──────────────┘
 ```
 
-### Layers:
-- **Domain Layer**: Core business entities and rules
-- **Handler Layer**: HTTP request/response handling
-- **Service Layer**: Business logic orchestration
-- **Repository Layer**: Data access abstraction
+### Backend Layers
 
-See `ARCHITECTURE_OVERVIEW.md` for detailed architecture documentation.
+1. **Handler Layer** (`internal/handler/`): HTTP request handling
+2. **Service Layer** (`internal/service/`): Business logic
+3. **Repository Layer** (`internal/repository/`): Data persistence
+4. **Domain Layer** (`internal/domain/`): Core models and interfaces
 
-## ✨ Best Practices Implemented
-
-### Architecture & Design
-- ✅ Clean Architecture with clear boundaries
-- ✅ Dependency Injection for loose coupling
-- ✅ Interface-based design for testability
-- ✅ Repository pattern for data access abstraction
-- ✅ Domain-Driven Design principles
-
-### Code Quality
-- ✅ Proper error handling with context
-- ✅ Context propagation throughout the stack
-- ✅ Graceful shutdown with signal handling
-- ✅ Concurrency-safe implementations (mutex locks)
-- ✅ Structured logging
-- ✅ Configuration management
-
-### Development
-- ✅ Makefile for common tasks
-- ✅ Docker support for containerization
-- ✅ Go modules for dependency management
-````markdown
-# Go Backend Project
-
-A production-ready Go backend following clean architecture principles and best practices.
-
-## 📁 Project Structure
-
-```
-.
-├── cmd/                    # Main applications
-│   └── api/               # API server entry point
-│       └── main.go
-├── internal/              # Private application code
-│   ├── domain/           # Domain entities/models
-│   │   └── user.go
-│   ├── repository/       # Data access layer
-│   │   ├── user_repository.go
-│   │   └── memory/       # In-memory implementation
-│   │       └── user_repository.go
-│   ├── service/          # Business logic layer
-│   │   └── user_service.go
-│   └── handler/          # HTTP handlers
-│       └── user_handler.go
-├── pkg/                   # Public libraries
-│   └── logger/           # Logging utilities
-│       └── logger.go
-├── config/               # Configuration files
-├── migrations/           # Database migrations
-├── scripts/              # Build and deployment scripts
-├── tests/                # Integration tests
-├── Makefile              # Build commands
-├── Dockerfile            # Docker configuration
-├── go.mod                # Go module file
-└── README.md
-```
-
-## 🏗️ Architecture
-
-This project follows **Clean Architecture** principles with clear separation of concerns:
-
-- **Domain Layer**: Core business entities and rules
-- **Repository Layer**: Data access abstraction
-- **Service Layer**: Business logic orchestration
-- **Handler Layer**: HTTP request/response handling
-
-## ✨ Best Practices Implemented
-
-### Architecture & Design
-- ✅ Clean Architecture with clear boundaries
-- ✅ Dependency Injection for loose coupling
-- ✅ Interface-based design for testability
-- ✅ Repository pattern for data access abstraction
-- ✅ Domain-Driven Design principles
-
-### Code Quality
-- ✅ Proper error handling with context
-- ✅ Context propagation throughout the stack
-- ✅ Graceful shutdown with signal handling
-- ✅ Concurrency-safe implementations (mutex locks)
-- ✅ Structured logging
-- ✅ Configuration management
-
-### Development
-- ✅ Makefile for common tasks
-- ✅ Docker support for containerization
-- ✅ Go modules for dependency management
-- ✅ Clear project structure following Go standards
-
-## 🚀 Getting Started
+## 📝 Development
 
 ### Prerequisites
-
 - Go 1.21 or higher
-- Make (optional but recommended)
-- Docker (optional, for containerization)
+- Python 3.9+ (for ML model)
+- Git
 
-### Installation
+### Backend Development
 
-1. Clone the repository:
 ```bash
-git clone <repository-url>
+# Run tests
 cd backend
+go test ./...
+
+# Run with hot reload (install air first)
+air
+
+# Format code
+go fmt ./...
+
+# Run linter
+golangci-lint run
 ```
 
-2. Install dependencies:
+### Adding New Features
+
+1. Define domain models in `internal/domain/`
+2. Create repository interface and implementation
+3. Implement business logic in `internal/service/`
+4. Add HTTP handlers in `internal/handler/`
+5. Register routes in `cmd/api/main.go`
+
+## 🔐 Environment Variables
+
 ```bash
-make deps
+# Backend
+ML_SERVICE_URL=https://your-ml-service.com  # ML model API endpoint
+PORT=8080                                    # Server port (default: 8080)
+
+# ML Service (when deploying)
+PORT=7860                                    # For Hugging Face Spaces
+PORT=8000                                    # For Render/local
 ```
 
-### Running the Application
+## 📚 Documentation
 
-#### Using Make:
-```bash
-make run
-```
-
-#### Using Go directly:
-```bash
-go run cmd/api/main.go
-```
-
-#### Using Docker:
-```bash
-docker build -t go-backend .
-docker run -p 8080:8080 go-backend
-```
-
-The server will start on `http://localhost:8080`
-
-### Available Endpoints
-
-- `GET /health` - Health check endpoint
-
-## 🧪 Testing
-
-Run all tests:
-```bash
-make test
-```
-
-Run tests with coverage:
-```bash
-make test
-make coverage
-```
-
-## 🛠️ Development
-
-### Build Commands
-
-- `make build` - Build the application
-- `make run` - Run the application
-- `make test` - Run tests
-- `make coverage` - Generate coverage report
-- `make clean` - Clean build artifacts
-- `make lint` - Run linter (requires golangci-lint)
-- `make deps` - Download and tidy dependencies
-- `make help` - Show all available commands
-
-### Code Structure Guidelines
-
-#### Adding a New Entity
-
-1. Create domain model in `internal/domain/`
-2. Define repository interface in `internal/repository/`
-3. Implement repository in `internal/repository/memory/` (or other storage)
-4. Create service in `internal/service/`
-5. Add HTTP handlers in `internal/handler/`
-6. Wire everything in `cmd/api/main.go`
-
-#### Example: Adding a Product Entity
-
-```go
-// 1. Domain (internal/domain/product.go)
-type Product struct {
-    ID    string
-    Name  string
-    Price float64
-}
-
-// 2. Repository Interface (internal/repository/product_repository.go)
-type ProductRepository interface {
-    Create(ctx context.Context, product *domain.Product) error
-    // ... other methods
-}
-
-// 3. Implementation (internal/repository/memory/product_repository.go)
-type ProductRepository struct {
-    // implementation
-}
-
-// 4. Service (internal/service/product_service.go)
-type ProductService struct {
-    repo repository.ProductRepository
-}
-
-// 5. Handler (internal/handler/product_handler.go)
-type ProductHandler struct {
-    service *service.ProductService
-}
-```
-
-## 📝 Configuration
-
-Environment variables:
-- `PORT` - Server port (default: 8080)
-- `LOG_LEVEL` - Logging level (default: info)
-
-## 🔒 Security Best Practices
-
-- Context-based request cancellation
-- Proper timeout configurations
-- Input validation in domain layer
-- Thread-safe concurrent operations
-
-## 🐳 Docker
-
-Build and run with Docker:
-```bash
-docker build -t go-backend .
-docker run -p 8080:8080 go-backend
-```
-
-## 📚 Additional Resources
-
-- [Effective Go](https://golang.org/doc/effective_go.html)
-- [Go Code Review Comments](https://github.com/golang/go/wiki/CodeReviewComments)
-- [Standard Go Project Layout](https://github.com/golang-standards/project-layout)
+- [Backend README](./backend/README.md)
+- [Architecture Overview](./backend/ARCHITECTURE.md)
+- [API Documentation](./backend/API_TESTING.md)
+- [Kaggle Notebook Guide](./backend/KAGGLE_NOTEBOOK_GUIDE.md)
 
 ## 🤝 Contributing
 
-1. Follow the existing code structure
-2. Write tests for new features
-3. Ensure all tests pass before submitting
-4. Follow Go conventions and best practices
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is for educational purposes as part of a Final Year Project.
 
-````
+## 👥 Team
+
+- **Student**: Naman Jain
+- **Institution**: [Your University]
+- **Year**: 2024-2025
+
+## 🙏 Acknowledgments
+
+- ISOT Fake News Dataset creators
+- TensorFlow and Keras communities
+- Go programming community
+
+## 📞 Contact
+
+- GitHub: [@Naman30903](https://github.com/Naman30903)
+- Repository: [Final-Year-Project](https://github.com/Naman30903/Final-Year-Project)
+
+---
+
+⭐ If you found this project helpful, please consider giving it a star!
