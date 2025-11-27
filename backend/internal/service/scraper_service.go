@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Naman30903/Final-Year-Project/internal/domain"
+	"github.com/PuerkitoBio/goquery"
 )
 
 // ScraperService handles URL scraping
@@ -45,7 +46,7 @@ func (s *ScraperService) ScrapeURL(urlStr string) (string, error) {
 	}
 
 	// Set user agent to avoid being blocked
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
@@ -57,15 +58,11 @@ func (s *ScraperService) ScrapeURL(urlStr string) (string, error) {
 		return "", fmt.Errorf("%w: status code %d", domain.ErrURLScrapingFailed, resp.StatusCode)
 	}
 
-	// Read body
-	body, err := io.ReadAll(resp.Body)
+	// Parse HTML using goquery
+	content, err := s.extractContentWithGoquery(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("%w: failed to read body", domain.ErrURLScrapingFailed)
+		return "", fmt.Errorf("%w: %v", domain.ErrURLScrapingFailed, err)
 	}
-
-	// Basic HTML content extraction (remove tags)
-	// TODO: Use a proper HTML parser library like goquery for better extraction
-	content := s.extractTextFromHTML(string(body))
 
 	if content == "" {
 		return "", fmt.Errorf("%w: no content extracted", domain.ErrURLScrapingFailed)
@@ -92,60 +89,92 @@ func (s *ScraperService) isValidURL(urlStr string) bool {
 	return true
 }
 
-// extractTextFromHTML is a basic HTML text extractor
-// TODO: Replace with a proper HTML parser for production use
-func (s *ScraperService) extractTextFromHTML(html string) string {
-	// Very basic implementation - strips HTML tags
-	// For production, use: github.com/PuerkitoBio/goquery
+// extractContentWithGoquery extracts article content using goquery
+func (s *ScraperService) extractContentWithGoquery(body io.Reader) (string, error) {
+	doc, err := goquery.NewDocumentFromReader(body)
+	if err != nil {
+		return "", err
+	}
 
-	// Remove script and style tags
-	html = removeTagsWithContent(html, "script")
-	html = removeTagsWithContent(html, "style")
+	// Remove unwanted elements
+	doc.Find("script, style, nav, header, footer, aside, form, iframe, noscript").Remove()
 
-	// Remove HTML tags
-	inTag := false
-	var result strings.Builder
+	var content strings.Builder
 
-	for _, char := range html {
-		if char == '<' {
-			inTag = true
-			result.WriteRune(' ')
-			continue
-		}
-		if char == '>' {
-			inTag = false
-			continue
-		}
-		if !inTag {
-			result.WriteRune(char)
+	// Try to find article content using common selectors
+	// Priority order: article-specific selectors first, then fallbacks
+	articleSelectors := []string{
+		"article",
+		"[role='main']",
+		".article-content",
+		".post-content",
+		".entry-content",
+		".content",
+		"main",
+		"#content",
+		".story-body",
+		".article-body",
+	}
+
+	foundContent := false
+	for _, selector := range articleSelectors {
+		doc.Find(selector).Each(func(i int, s *goquery.Selection) {
+			// Extract text from paragraphs, headings, and list items
+			s.Find("p, h1, h2, h3, h4, h5, h6, li").Each(func(j int, elem *goquery.Selection) {
+				text := strings.TrimSpace(elem.Text())
+				if text != "" {
+					content.WriteString(text)
+					content.WriteString(" ")
+					foundContent = true
+				}
+			})
+		})
+
+		if foundContent {
+			break
 		}
 	}
 
-	// Clean up whitespace
-	text := result.String()
-	text = strings.Join(strings.Fields(text), " ")
+	// Fallback: if no content found with selectors, extract all paragraphs
+	if !foundContent {
+		doc.Find("p").Each(func(i int, s *goquery.Selection) {
+			text := strings.TrimSpace(s.Text())
+			if text != "" && len(text) > 50 { // Filter out very short paragraphs
+				content.WriteString(text)
+				content.WriteString(" ")
+			}
+		})
+	}
 
-	return strings.TrimSpace(text)
+	// Clean up and normalize whitespace
+	result := strings.Join(strings.Fields(content.String()), " ")
+	return strings.TrimSpace(result), nil
 }
 
-// removeTagsWithContent removes tags and their content
-func removeTagsWithContent(html, tag string) string {
-	startTag := fmt.Sprintf("<%s", tag)
-	endTag := fmt.Sprintf("</%s>", tag)
-
-	for {
-		start := strings.Index(strings.ToLower(html), startTag)
-		if start == -1 {
-			break
-		}
-
-		end := strings.Index(strings.ToLower(html[start:]), endTag)
-		if end == -1 {
-			break
-		}
-
-		html = html[:start] + html[start+end+len(endTag):]
+// extractMetadata extracts metadata from the HTML document (optional)
+func (s *ScraperService) extractMetadata(body io.Reader) (title, description, author string, err error) {
+	doc, err := goquery.NewDocumentFromReader(body)
+	if err != nil {
+		return "", "", "", err
 	}
 
-	return html
+	// Extract title
+	title = doc.Find("title").First().Text()
+	if title == "" {
+		title, _ = doc.Find("meta[property='og:title']").Attr("content")
+	}
+
+	// Extract description
+	description, _ = doc.Find("meta[name='description']").Attr("content")
+	if description == "" {
+		description, _ = doc.Find("meta[property='og:description']").Attr("content")
+	}
+
+	// Extract author
+	author, _ = doc.Find("meta[name='author']").Attr("content")
+	if author == "" {
+		author, _ = doc.Find("meta[property='article:author']").Attr("content")
+	}
+
+	return strings.TrimSpace(title), strings.TrimSpace(description), strings.TrimSpace(author), nil
 }

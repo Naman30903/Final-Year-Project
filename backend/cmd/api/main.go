@@ -13,17 +13,25 @@ import (
 	"github.com/Naman30903/Final-Year-Project/internal/handler"
 	"github.com/Naman30903/Final-Year-Project/internal/repository/memory"
 	"github.com/Naman30903/Final-Year-Project/internal/service"
+	"github.com/joho/godotenv" // Add this import
 )
 
 func main() {
 	// Initialize logger
 	logger := log.New(os.Stdout, "API: ", log.LstdFlags)
 
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		logger.Printf("Warning: .env file not found, using environment variables")
+	}
+
 	// Get ML service URL from environment variable
 	mlServiceURL := os.Getenv("ML_SERVICE_URL")
 	if mlServiceURL == "" {
 		mlServiceURL = "http://localhost:8000" // Default for local development
 		logger.Printf("ML_SERVICE_URL not set, using default: %s", mlServiceURL)
+	} else {
+		logger.Printf("Using ML service at: %s", mlServiceURL)
 	}
 
 	// Initialize repositories
