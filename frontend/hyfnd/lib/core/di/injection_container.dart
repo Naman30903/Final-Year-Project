@@ -7,7 +7,6 @@ import '../../domain/usecases/analyze_news_usecase.dart';
 import '../../domain/usecases/get_history_usecase.dart';
 import '../../presentation/providers/news_analysis_provider.dart';
 import '../network/api_client.dart';
-import '../services/connection_service.dart';
 import '../constants/api_constants.dart';
 
 final sl = GetIt.instance;

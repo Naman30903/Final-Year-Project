@@ -21,10 +21,10 @@ class ApiConstants {
   }
 
   // API Endpoints (matching your Go backend)
-  static const String analyzeEndpoint = '/api/analyze';
+  static const String analyzeEndpoint = '/predict';
   static const String predictionsEndpoint = '/api/predictions';
   static const String historyEndpoint = '/api/history';
-  static const String healthEndpoint = '/api/health';
+  static const String healthEndpoint = '/health';
 
   // Timeouts
   static const Duration connectTimeout = Duration(seconds: 30);
