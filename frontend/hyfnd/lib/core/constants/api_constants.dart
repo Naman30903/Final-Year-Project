@@ -21,7 +21,7 @@ class ApiConstants {
   }
 
   // API Endpoints (matching your Go backend)
-  static const String analyzeEndpoint = '/predict';
+  static const String analyzeEndpoint = '/api/analyze';
   static const String predictionsEndpoint = '/api/predictions';
   static const String historyEndpoint = '/api/history';
   static const String healthEndpoint = '/health';

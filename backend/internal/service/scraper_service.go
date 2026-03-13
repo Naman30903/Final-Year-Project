@@ -12,12 +12,29 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-// ScraperService handles URL scraping
+// blockedDomains lists hosts that block automated scraping and return garbage.
+var blockedDomains = []string{
+	"twitter.com", "x.com",
+	"instagram.com", "facebook.com", "fb.com",
+	"tiktok.com", "linkedin.com",
+	"youtube.com", "youtu.be",
+}
+
+// ScraperService handles URL scraping with best-practice article extraction.
 type ScraperService struct {
 	httpClient *http.Client
 }
 
-// NewScraperService creates a new scraper service
+// ScrapeResult contains extracted article data.
+type ScrapeResult struct {
+	Text        string // cleaned article body
+	Title       string
+	Description string
+	Author      string
+	Source      string // hostname
+}
+
+// NewScraperService creates a new scraper service.
 func NewScraperService() *ScraperService {
 	return &ScraperService{
 		httpClient: &http.Client{
@@ -32,149 +49,213 @@ func NewScraperService() *ScraperService {
 	}
 }
 
-// ScrapeURL fetches content from a URL
+// ScrapeURL fetches a URL and returns extracted article content.
+// Kept for backward-compat — returns only the body text.
 func (s *ScraperService) ScrapeURL(urlStr string) (string, error) {
-	// Validate URL
-	if !s.isValidURL(urlStr) {
-		return "", domain.ErrInvalidURL
+	res, err := s.ScrapeArticle(urlStr)
+	if err != nil {
+		return "", err
+	}
+	return res.Text, nil
+}
+
+// ScrapeArticle fetches a URL and returns structured article data.
+func (s *ScraperService) ScrapeArticle(urlStr string) (*ScrapeResult, error) {
+	// ---------- validate ----------
+	parsed, err := s.validateURL(urlStr)
+	if err != nil {
+		return nil, err
 	}
 
-	// Fetch URL
+	// ---------- blocked domains ----------
+	host := strings.ToLower(parsed.Hostname())
+	for _, blocked := range blockedDomains {
+		if host == blocked || strings.HasSuffix(host, "."+blocked) {
+			return nil, fmt.Errorf("%w: %s blocks automated scraping — paste the article text instead",
+				domain.ErrURLScrapingFailed, host)
+		}
+	}
+
+	// ---------- fetch ----------
 	req, err := http.NewRequest("GET", urlStr, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-
-	// Set user agent to avoid being blocked
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	req.Header.Set("User-Agent",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "+
+			"(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", domain.ErrURLScrapingFailed, err)
+		return nil, fmt.Errorf("%w: %v", domain.ErrURLScrapingFailed, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("%w: status code %d", domain.ErrURLScrapingFailed, resp.StatusCode)
+		return nil, fmt.Errorf("%w: HTTP %d from %s",
+			domain.ErrURLScrapingFailed, resp.StatusCode, host)
 	}
 
-	// Parse HTML using goquery
-	content, err := s.extractContentWithGoquery(resp.Body)
+	ct := resp.Header.Get("Content-Type")
+	if ct != "" && !strings.Contains(ct, "html") {
+		return nil, fmt.Errorf("%w: expected HTML, got %s", domain.ErrURLScrapingFailed, ct)
+	}
+
+	// ---------- parse ----------
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", domain.ErrURLScrapingFailed, err)
+		return nil, fmt.Errorf("%w: %v", domain.ErrURLScrapingFailed, err)
 	}
 
-	if content == "" {
-		return "", fmt.Errorf("%w: no content extracted", domain.ErrURLScrapingFailed)
+	result := &ScrapeResult{Source: host}
+
+	// Extract metadata first (before removing elements).
+	result.Title, result.Description, result.Author = extractMeta(doc)
+
+	// Remove noise.
+	doc.Find("script, style, nav, header, footer, aside, form, iframe, " +
+		"noscript, svg, button, [role='navigation'], [role='banner'], " +
+		"[role='complementary'], .sidebar, .comments, .social-share, " +
+		".newsletter-signup, .ad, .advertisement, #comments").Remove()
+
+	// Extract body.
+	result.Text = extractArticleBody(doc)
+
+	if len(result.Text) < 80 {
+		return nil, fmt.Errorf(
+			"%w: extracted only %d chars from %s — the site may require JavaScript rendering",
+			domain.ErrURLScrapingFailed, len(result.Text), host)
 	}
 
-	return content, nil
+	return result, nil
 }
 
-// isValidURL checks if the URL is valid
-func (s *ScraperService) isValidURL(urlStr string) bool {
+// ---------- private helpers ----------
+
+func (s *ScraperService) validateURL(urlStr string) (*url.URL, error) {
 	u, err := url.Parse(urlStr)
 	if err != nil {
-		return false
+		return nil, domain.ErrInvalidURL
 	}
-
 	if u.Scheme != "http" && u.Scheme != "https" {
-		return false
+		return nil, fmt.Errorf("%w: scheme must be http or https", domain.ErrInvalidURL)
 	}
-
 	if u.Host == "" {
-		return false
+		return nil, fmt.Errorf("%w: missing host", domain.ErrInvalidURL)
 	}
-
-	return true
+	return u, nil
 }
 
-// extractContentWithGoquery extracts article content using goquery
-func (s *ScraperService) extractContentWithGoquery(body io.Reader) (string, error) {
-	doc, err := goquery.NewDocumentFromReader(body)
-	if err != nil {
-		return "", err
+// extractMeta pulls title, description, and author from <head> metadata.
+func extractMeta(doc *goquery.Document) (title, description, author string) {
+	// Title: og:title → <title>
+	if t, ok := doc.Find(`meta[property="og:title"]`).Attr("content"); ok && t != "" {
+		title = t
+	} else {
+		title = strings.TrimSpace(doc.Find("title").First().Text())
 	}
 
-	// Remove unwanted elements
-	doc.Find("script, style, nav, header, footer, aside, form, iframe, noscript").Remove()
-
-	var content strings.Builder
-
-	// Try to find article content using common selectors
-	// Priority order: article-specific selectors first, then fallbacks
-	articleSelectors := []string{
-		"article",
-		"[role='main']",
-		".article-content",
-		".post-content",
-		".entry-content",
-		".content",
-		"main",
-		"#content",
-		".story-body",
-		".article-body",
+	// Description: og:description → meta description
+	if d, ok := doc.Find(`meta[property="og:description"]`).Attr("content"); ok && d != "" {
+		description = d
+	} else if d, ok = doc.Find(`meta[name="description"]`).Attr("content"); ok {
+		description = d
 	}
 
-	foundContent := false
-	for _, selector := range articleSelectors {
-		doc.Find(selector).Each(func(i int, s *goquery.Selection) {
-			// Extract text from paragraphs, headings, and list items
-			s.Find("p, h1, h2, h3, h4, h5, h6, li").Each(func(j int, elem *goquery.Selection) {
-				text := strings.TrimSpace(elem.Text())
-				if text != "" {
-					content.WriteString(text)
-					content.WriteString(" ")
-					foundContent = true
-				}
-			})
-		})
+	// Author: meta author → article:author → .author class
+	if a, ok := doc.Find(`meta[name="author"]`).Attr("content"); ok && a != "" {
+		author = a
+	} else if a, ok = doc.Find(`meta[property="article:author"]`).Attr("content"); ok && a != "" {
+		author = a
+	} else {
+		author = strings.TrimSpace(doc.Find(".author, [rel='author']").First().Text())
+	}
 
-		if foundContent {
-			break
+	return
+}
+
+// extractArticleBody applies a priority cascade to pull the article body text.
+func extractArticleBody(doc *goquery.Document) string {
+	// ── Strategy 1: <article> tag ──
+	if article := doc.Find("article"); article.Length() > 0 {
+		if text := paragraphsFrom(article); len(text) > 200 {
+			return text
 		}
 	}
 
-	// Fallback: if no content found with selectors, extract all paragraphs
-	if !foundContent {
-		doc.Find("p").Each(func(i int, s *goquery.Selection) {
-			text := strings.TrimSpace(s.Text())
-			if text != "" && len(text) > 50 { // Filter out very short paragraphs
-				content.WriteString(text)
-				content.WriteString(" ")
+	// ── Strategy 2: scored containers ──
+	// Find the <div>/<section> with the highest paragraph density.
+	type scored struct {
+		node  *goquery.Selection
+		score int
+	}
+	var best scored
+	doc.Find("div, section").Each(func(_ int, sel *goquery.Selection) {
+		score := 0
+		sel.Find("p").Each(func(_ int, p *goquery.Selection) {
+			t := strings.TrimSpace(p.Text())
+			if len(t) > 40 {
+				score += len(t) // weight by character count
 			}
 		})
+		if score > best.score {
+			best = scored{node: sel, score: score}
+		}
+	})
+	if best.node != nil && best.score > 300 {
+		if text := paragraphsFrom(best.node); len(text) > 200 {
+			return text
+		}
 	}
 
-	// Clean up and normalize whitespace
-	result := strings.Join(strings.Fields(content.String()), " ")
-	return strings.TrimSpace(result), nil
+	// ── Strategy 3: common CSS selectors ──
+	selectors := []string{
+		"[role='main']",
+		".article-content", ".post-content", ".entry-content",
+		".story-body", ".article-body", ".article__body",
+		"main", "#content", ".content",
+	}
+	for _, sel := range selectors {
+		node := doc.Find(sel)
+		if node.Length() == 0 {
+			continue
+		}
+		if text := paragraphsFrom(node); len(text) > 200 {
+			return text
+		}
+	}
+
+	// ── Strategy 4: all <p> fallback ──
+	return paragraphsFrom(doc.Selection)
 }
 
-// extractMetadata extracts metadata from the HTML document (optional)
+// paragraphsFrom concatenates meaningful <p> text within a container.
+func paragraphsFrom(sel *goquery.Selection) string {
+	var parts []string
+	sel.Find("p").Each(func(_ int, p *goquery.Selection) {
+		t := strings.TrimSpace(p.Text())
+		if len(t) > 40 {
+			parts = append(parts, t)
+		}
+	})
+	text := strings.Join(parts, " ")
+	return strings.Join(strings.Fields(text), " ") // normalize whitespace
+}
+
+// isValidURL is kept for any external callers.
+func (s *ScraperService) isValidURL(urlStr string) bool {
+	_, err := s.validateURL(urlStr)
+	return err == nil
+}
+
+// extractMetadata kept for backward compat.
 func (s *ScraperService) extractMetadata(body io.Reader) (title, description, author string, err error) {
 	doc, err := goquery.NewDocumentFromReader(body)
 	if err != nil {
 		return "", "", "", err
 	}
-
-	// Extract title
-	title = doc.Find("title").First().Text()
-	if title == "" {
-		title, _ = doc.Find("meta[property='og:title']").Attr("content")
-	}
-
-	// Extract description
-	description, _ = doc.Find("meta[name='description']").Attr("content")
-	if description == "" {
-		description, _ = doc.Find("meta[property='og:description']").Attr("content")
-	}
-
-	// Extract author
-	author, _ = doc.Find("meta[name='author']").Attr("content")
-	if author == "" {
-		author, _ = doc.Find("meta[property='article:author']").Attr("content")
-	}
-
-	return strings.TrimSpace(title), strings.TrimSpace(description), strings.TrimSpace(author), nil
+	title, description, author = extractMeta(doc)
+	return
 }

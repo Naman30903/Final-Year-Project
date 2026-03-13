@@ -10,14 +10,21 @@ class AnalyzeNewsUseCase {
   AnalyzeNewsUseCase(this.repository);
 
   Future<Either<Failure, Prediction>> call(NewsArticle article) async {
-    // Validation
     if (article.content.trim().isEmpty) {
       return const Left(ValidationFailure('Content cannot be empty'));
     }
 
-    if (article.content.length < 50) {
+    // Only enforce minimum length for text input, not URLs.
+    if (article.type == 'text' && article.content.trim().length < 50) {
       return const Left(
           ValidationFailure('Content too short (minimum 50 characters)'));
+    }
+
+    if (article.type == 'url') {
+      final uri = Uri.tryParse(article.content.trim());
+      if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
+        return const Left(ValidationFailure('Please enter a valid URL'));
+      }
     }
 
     return await repository.analyzeNews(article);

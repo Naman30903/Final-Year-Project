@@ -23,9 +23,7 @@ class _AnalysisViewState extends State<AnalysisView> {
   }
 
   Future<void> _analyzeNews() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     final provider = context.read<NewsAnalysisProvider>();
 
@@ -43,6 +41,7 @@ class _AnalysisViewState extends State<AnalysisView> {
         SnackBar(
           content: Text(provider.errorMessage ?? 'An error occurred'),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -50,14 +49,18 @@ class _AnalysisViewState extends State<AnalysisView> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Analyze News'),
-      ),
+      appBar: AppBar(title: const Text('Analyze News')),
       body: Consumer<NewsAnalysisProvider>(
         builder: (context, provider, child) {
           if (provider.state == AnalysisState.loading) {
-            return const LoadingIndicator(message: 'Analyzing article...');
+            return LoadingIndicator(
+              message: _selectedType == 'url'
+                  ? 'Fetching and analyzing article...'
+                  : 'Analyzing article...',
+            );
           }
 
           return SingleChildScrollView(
@@ -67,16 +70,16 @@ class _AnalysisViewState extends State<AnalysisView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // ── Input type selector ──
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Input Type',
-                            style: TextStyle(
-                              fontSize: 16,
+                            style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -95,9 +98,9 @@ class _AnalysisViewState extends State<AnalysisView> {
                               ),
                             ],
                             selected: {_selectedType},
-                            onSelectionChanged: (Set<String> newSelection) {
+                            onSelectionChanged: (sel) {
                               setState(() {
-                                _selectedType = newSelection.first;
+                                _selectedType = sel.first;
                                 _contentController.clear();
                               });
                             },
@@ -106,7 +109,10 @@ class _AnalysisViewState extends State<AnalysisView> {
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 16),
+
+                  // ── Content input ──
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -117,9 +123,17 @@ class _AnalysisViewState extends State<AnalysisView> {
                             _selectedType == 'text'
                                 ? 'Article Content'
                                 : 'Article URL',
-                            style: const TextStyle(
-                              fontSize: 16,
+                            style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _selectedType == 'text'
+                                ? 'Paste the full article text below'
+                                : 'Paste a news article link — we\'ll fetch and analyze it',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -141,7 +155,7 @@ class _AnalysisViewState extends State<AnalysisView> {
                                 : TextInputType.multiline,
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
-                                return 'Please enter ${_selectedType == 'text' ? 'content' : 'URL'}';
+                                return 'Please enter ${_selectedType == 'text' ? 'content' : 'a URL'}';
                               }
 
                               if (_selectedType == 'text' &&
@@ -149,9 +163,13 @@ class _AnalysisViewState extends State<AnalysisView> {
                                 return 'Content must be at least 50 characters';
                               }
 
-                              if (_selectedType == 'url' &&
-                                  !Uri.tryParse(value)!.hasScheme) {
-                                return 'Please enter a valid URL';
+                              if (_selectedType == 'url') {
+                                final uri = Uri.tryParse(value.trim());
+                                if (uri == null ||
+                                    !uri.hasScheme ||
+                                    !uri.hasAuthority) {
+                                  return 'Please enter a valid URL (e.g. https://...)';
+                                }
                               }
 
                               return null;
@@ -161,11 +179,41 @@ class _AnalysisViewState extends State<AnalysisView> {
                       ),
                     ),
                   ),
+
+                  if (_selectedType == 'url') ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline,
+                              size: 14,
+                              color: theme.colorScheme.onSurfaceVariant),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Works best with standard news sites. Social media links are not supported.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 24),
+
+                  // ── Submit ──
                   ElevatedButton.icon(
                     onPressed: _analyzeNews,
                     icon: const Icon(Icons.psychology),
-                    label: const Text('Analyze Article'),
+                    label: Text(
+                      _selectedType == 'url'
+                          ? 'Fetch & Analyze'
+                          : 'Analyze Article',
+                    ),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),

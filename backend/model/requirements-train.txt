@@ -6,3 +6,4 @@ scikit-learn>=1.4.0
 pandas>=2.2.0
 numpy>=1.26.0
 sentencepiece>=0.1.99
+huggingface_hub>=0.22.0

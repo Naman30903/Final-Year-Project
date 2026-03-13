@@ -31,48 +31,77 @@ func NewNewsService(mlClient *MLClient, scraper *ScraperService, repo NewsReposi
 	}
 }
 
-// AnalyzeNews analyzes news article or URL for fake news detection
+// AnalyzeNews analyzes news article or URL for fake news detection.
+//
+// For URL requests the flow is:
+//  1. Go scraper extracts article text + metadata locally.
+//  2. Extracted text is sent to the ML service POST /predict.
+//  3. If Go scraping fails, fall back to ML service POST /predict/url
+//     (the Python service has its own scraper).
 func (s *NewsService) AnalyzeNews(req *domain.AnalysisRequest) (*domain.Prediction, error) {
-	// Validate request
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
 
-	var textContent string
+	var prediction *domain.Prediction
 	var err error
 
-	// Extract content based on type
 	switch req.Type {
 	case "text":
-		textContent = req.Content
-	case "url":
-		// Scrape content from URL
-		textContent, err = s.scraper.ScrapeURL(req.Content)
+		prediction, err = s.mlClient.Predict(req.Content)
 		if err != nil {
 			return nil, err
 		}
+
+	case "url":
+		prediction, err = s.analyzeURL(req.Content)
+		if err != nil {
+			return nil, err
+		}
+
 	default:
 		return nil, domain.ErrInvalidRequestType
 	}
 
-	// Get prediction from ML model
-	prediction, err := s.mlClient.Predict(textContent)
-	if err != nil {
-		return nil, err
-	}
-
-	// Enrich prediction with request metadata
+	// Enrich with request metadata.
 	prediction.ID = uuid.New().String()
 	prediction.RequestType = req.Type
 	prediction.OriginalContent = req.Content
 	prediction.CreatedAt = time.Now()
 
-	// Save prediction to repository
-	if err := s.repository.SavePrediction(prediction); err != nil {
-		// Log error but don't fail the request
-		fmt.Printf("Warning: Failed to save prediction: %v\n", err)
+	// Persist (best-effort).
+	if saveErr := s.repository.SavePrediction(prediction); saveErr != nil {
+		fmt.Printf("Warning: failed to save prediction: %v\n", saveErr)
 	}
 
+	return prediction, nil
+}
+
+// analyzeURL tries the Go scraper first, then falls back to the ML service's
+// own /predict/url endpoint.
+func (s *NewsService) analyzeURL(articleURL string) (*domain.Prediction, error) {
+	// ── primary: scrape locally then send text ──
+	scrapeResult, scrapeErr := s.scraper.ScrapeArticle(articleURL)
+	if scrapeErr == nil {
+		prediction, err := s.mlClient.Predict(scrapeResult.Text)
+		if err != nil {
+			return nil, err
+		}
+		// Attach metadata from the scraper.
+		prediction.ArticleTitle = scrapeResult.Title
+		prediction.ArticleDescription = scrapeResult.Description
+		prediction.ArticleAuthor = scrapeResult.Author
+		prediction.ArticleSource = scrapeResult.Source
+		return prediction, nil
+	}
+
+	// ── fallback: let the ML service scrape ──
+	fmt.Printf("Go scraper failed (%v), falling back to ML /predict/url\n", scrapeErr)
+	prediction, err := s.mlClient.PredictURL(articleURL)
+	if err != nil {
+		// Return the original scrape error — it's more descriptive.
+		return nil, fmt.Errorf("%w (ML fallback also failed: %v)", scrapeErr, err)
+	}
 	return prediction, nil
 }
 

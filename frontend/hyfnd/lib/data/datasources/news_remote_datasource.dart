@@ -22,7 +22,18 @@ class NewsRemoteDataSourceImpl implements NewsRemoteDataSource {
         ApiConstants.analyzeEndpoint,
         data: data,
       );
-      return PredictionModel.fromJson(response.data);
+
+      final body = response.data as Map<String, dynamic>;
+
+      // Go backend wraps in { "success": true, "prediction": { ... } }
+      if (body.containsKey('prediction') && body['prediction'] != null) {
+        return PredictionModel.fromJson(
+          body['prediction'] as Map<String, dynamic>,
+        );
+      }
+
+      // Fallback: response IS the prediction (direct ML service)
+      return PredictionModel.fromJson(body);
     } catch (e) {
       throw _enhanceError(e, 'analyzeNews');
     }
@@ -32,9 +43,11 @@ class NewsRemoteDataSourceImpl implements NewsRemoteDataSource {
   Future<PredictionModel> getPrediction(String id) async {
     try {
       final response = await apiClient.get(
-        '${ApiConstants.predictionsEndpoint}/$id',
+        '${ApiConstants.predictionsEndpoint}?id=$id',
       );
-      return PredictionModel.fromJson(response.data);
+      return PredictionModel.fromJson(
+        response.data as Map<String, dynamic>,
+      );
     } catch (e) {
       throw _enhanceError(e, 'getPrediction');
     }
@@ -44,8 +57,22 @@ class NewsRemoteDataSourceImpl implements NewsRemoteDataSource {
   Future<List<PredictionModel>> getHistory() async {
     try {
       final response = await apiClient.get(ApiConstants.historyEndpoint);
-      final List<dynamic> data = response.data;
-      return data.map((json) => PredictionModel.fromJson(json)).toList();
+      final body = response.data;
+
+      // Go backend returns { "success": true, "count": N, "history": [...] }
+      List<dynamic> items;
+      if (body is Map<String, dynamic> && body.containsKey('history')) {
+        items = body['history'] as List<dynamic>? ?? [];
+      } else if (body is List) {
+        items = body;
+      } else {
+        return [];
+      }
+
+      return items
+          .map((json) =>
+              PredictionModel.fromJson(json as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       throw _enhanceError(e, 'getHistory');
     }
@@ -77,9 +104,9 @@ class NewsRemoteDataSourceImpl implements NewsRemoteDataSource {
       return Exception(
         'Failed to $operation: Network/CORS error.\n\n'
         'Please ensure:\n'
-        '• Backend is running at ${ApiConstants.baseUrl}\n'
-        '• CORS is enabled on the backend\n'
-        '• No mixed content issues (HTTP vs HTTPS)',
+        '  Backend is running at ${ApiConstants.baseUrl}\n'
+        '  CORS is enabled on the backend\n'
+        '  No mixed content issues (HTTP vs HTTPS)',
       );
     }
 
