@@ -34,11 +34,23 @@ func main() {
 		logger.Printf("Using ML service at: %s", mlServiceURL)
 	}
 
+	mlServiceAPIKey := os.Getenv("ML_SERVICE_API_KEY")
+	mlPredictPath := os.Getenv("ML_PREDICT_PATH")
+	if mlPredictPath == "" {
+		mlPredictPath = "/predict"
+	}
+	mlHealthPath := os.Getenv("ML_HEALTH_PATH")
+	if mlHealthPath == "" {
+		mlHealthPath = "/health"
+	}
+
 	// Initialize repositories
 	predictionRepo := memory.NewPredictionRepository()
 
 	// Initialize services
-	mlClient := service.NewMLClient(mlServiceURL)
+	mlClient := service.NewMLClient(mlServiceURL).
+		WithAPIKey(mlServiceAPIKey).
+		WithPaths(mlPredictPath, mlHealthPath)
 	scraperService := service.NewScraperService()
 	newsService := service.NewNewsService(mlClient, scraperService, predictionRepo)
 

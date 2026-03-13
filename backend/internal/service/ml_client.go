@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Naman30903/Final-Year-Project/internal/domain"
@@ -13,9 +14,11 @@ import (
 
 // MLClient handles communication with the ML model service
 type MLClient struct {
-	baseURL    string
-	httpClient *http.Client
-	apiKey     string // Optional: if you add authentication later
+	baseURL     string
+	httpClient  *http.Client
+	apiKey      string // Optional: if you add authentication later
+	predictPath string
+	healthPath  string
 }
 
 // NewMLClient creates a new ML client
@@ -25,7 +28,37 @@ func NewMLClient(baseURL string) *MLClient {
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second, // 30s timeout for ML processing
 		},
+		predictPath: "/predict",
+		healthPath:  "/health",
 	}
+}
+
+// WithAPIKey sets bearer token for upstream ML service calls.
+func (c *MLClient) WithAPIKey(apiKey string) *MLClient {
+	c.apiKey = apiKey
+	return c
+}
+
+// WithPaths sets custom prediction and health paths.
+func (c *MLClient) WithPaths(predictPath, healthPath string) *MLClient {
+	if predictPath != "" {
+		c.predictPath = normalizePath(predictPath)
+	}
+	if healthPath != "" {
+		c.healthPath = normalizePath(healthPath)
+	}
+	return c
+}
+
+func normalizePath(path string) string {
+	if strings.HasPrefix(path, "/") {
+		return path
+	}
+	return "/" + path
+}
+
+func buildEndpoint(baseURL, path string) string {
+	return strings.TrimRight(baseURL, "/") + normalizePath(path)
 }
 
 // MLPredictionRequest represents the request to ML service
@@ -56,7 +89,7 @@ func (c *MLClient) Predict(text string) (*domain.Prediction, error) {
 	}
 
 	// Send request to ML service
-	endpoint := fmt.Sprintf("%s/predict", c.baseURL)
+	endpoint := buildEndpoint(c.baseURL, c.predictPath)
 	req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -107,7 +140,7 @@ func (c *MLClient) Predict(text string) (*domain.Prediction, error) {
 
 // HealthCheck checks if ML service is available
 func (c *MLClient) HealthCheck() error {
-	endpoint := fmt.Sprintf("%s/health", c.baseURL)
+	endpoint := buildEndpoint(c.baseURL, c.healthPath)
 	resp, err := c.httpClient.Get(endpoint)
 	if err != nil {
 		return fmt.Errorf("%w: %v", domain.ErrMLServiceUnavailable, err)
