@@ -2,10 +2,10 @@
   "buildCommand": "bash vercel.sh",
   "outputDirectory": "build/web",
   "framework": null,
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/((?!.*\\.).*)",
+      "destination": "/index.html"
     }
   ]
 }
