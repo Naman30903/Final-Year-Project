@@ -10,7 +10,7 @@ class ApiConstants {
       // Web requires CORS to be enabled on the backend
       return const String.fromEnvironment(
         'API_BASE_URL',
-        defaultValue: 'http://localhost:8080',
+        defaultValue: 'https://hyfnd-go-api.onrender.com',
       );
     }
 
@@ -24,7 +24,7 @@ class ApiConstants {
 
     return const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://localhost:8080',
+      defaultValue: 'https://hyfnd-go-api.onrender.com',
     );
   }
 
