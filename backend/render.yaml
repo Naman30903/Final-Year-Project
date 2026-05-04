@@ -1,0 +1,28 @@
+services:
+  # 1. Python ML Service
+  - type: web
+    name: hyfnd-ml-service
+    env: docker
+    dockerContext: ./ml-service
+    dockerfilePath: ./ml-service/Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 7860
+
+  # 2. Main Go API
+  - type: web
+    name: hyfnd-go-api
+    env: docker
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8080
+      # Connect the Go API to the ML Service automatically via Render's internal network
+      - key: ML_SERVICE_URL
+        fromService:
+          type: web
+          name: hyfnd-ml-service
+          envVarKey: RENDER_INTERNAL_HOSTNAME

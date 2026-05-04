@@ -63,11 +63,14 @@ class _AnalysisViewState extends State<AnalysisView> {
             );
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Form(
-              key: _formKey,
-              child: Column(
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 700),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // ── Input type selector ──
@@ -219,6 +222,8 @@ class _AnalysisViewState extends State<AnalysisView> {
                     ),
                   ),
                 ],
+              ),
+            ),
               ),
             ),
           );

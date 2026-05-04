@@ -67,13 +67,18 @@ class _HistoryViewState extends State<HistoryView> {
             );
           }
 
-          return RefreshIndicator(
-            onRefresh: _refreshHistory,
-            child: ListView.builder(
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 700),
+              child: RefreshIndicator(
+                onRefresh: _refreshHistory,
+                child: ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: history.length,
               itemBuilder: (context, index) =>
                   _HistoryTile(prediction: history[index]),
+            ),
+              ),
             ),
           );
         },

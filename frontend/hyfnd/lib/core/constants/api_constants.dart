@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
+import 'package:flutter/foundation.dart'
+  show TargetPlatform, defaultTargetPlatform, kDebugMode, kIsWeb;
 
 class ApiConstants {
   // Base URL - Update this based on your backend deployment
@@ -14,6 +15,13 @@ class ApiConstants {
     }
 
     // For mobile platforms
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return const String.fromEnvironment(
+        'API_BASE_URL',
+        defaultValue: 'http://10.0.2.2:8080',
+      );
+    }
+
     return const String.fromEnvironment(
       'API_BASE_URL',
       defaultValue: 'http://localhost:8080',

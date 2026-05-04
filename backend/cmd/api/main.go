@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -20,8 +21,17 @@ func main() {
 	// Initialize logger
 	logger := log.New(os.Stdout, "API: ", log.LstdFlags)
 
-	// Load .env file
-	if err := godotenv.Load(); err != nil {
+	// Load .env file from common locations
+	envPaths := []string{".env", filepath.Join("cmd", "api", ".env")}
+	loaded := false
+	for _, p := range envPaths {
+		if err := godotenv.Load(p); err == nil {
+			logger.Printf("Loaded environment from %s", p)
+			loaded = true
+			break
+		}
+	}
+	if !loaded {
 		logger.Printf("Warning: .env file not found, using environment variables")
 	}
 

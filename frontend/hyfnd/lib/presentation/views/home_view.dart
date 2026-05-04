@@ -11,9 +11,11 @@ class HomeView extends StatelessWidget {
         title: const Text('HyFND - Fake News Detector'),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 700),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
             const Icon(
               Icons.fact_check_outlined,
               size: 100,
@@ -56,6 +58,7 @@ class HomeView extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

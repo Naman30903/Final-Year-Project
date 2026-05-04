@@ -26,9 +26,12 @@ class ResultView extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(title: const Text('Analysis Result')),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+          body: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 700),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // ── Verdict card ──
@@ -101,6 +104,8 @@ class ResultView extends StatelessWidget {
                   ],
                 ),
               ],
+            ),
+          ),
             ),
           ),
         );
