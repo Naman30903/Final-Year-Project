@@ -3,6 +3,7 @@ services:
   - type: web
     name: hyfnd-go-api
     env: docker
+    rootDir: backend
     dockerContext: .
     dockerfilePath: ./Dockerfile
     plan: free
